@@ -5,7 +5,7 @@ exports.handler = async function (event) {
 
   const query = event.queryStringParameters.query;
 
-  const prompt = query + "라는 건축/인테리어 자재에 대해 한국어로 설명해줘. 1. 특징 2. 장점 3. 단점 4. 일반적인 가격대(평당 또는 ㎡당). 전문 용어는 최소화하고 일반인이 이해하기 쉽게, 간결하게 정리해줘.";
+  const prompt = "Explain the home renovation/building material \"" + query + "\" in English, for a homeowner with no construction background. Include: 1. Brief description 2. Pros 3. Cons 4. Typical price range (per square foot, in USD, materials + installation combined). Keep jargon to a minimum and keep the whole answer concise.";
 
   try {
     const response = await fetch(API_URL, {
