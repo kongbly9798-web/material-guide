@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>건축 자재 검색 도우미</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Malgun Gothic", sans-serif;
+    background: #faf6f2;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  h1 { font-size: 22px; margin-bottom: 16px; color: #4a3428; text-align: center; }
+  .search-box { display: flex; width: 100%; max-width: 480px; gap: 8px; margin-bottom: 20px; }
+  input { flex: 1; padding: 12px 14px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+  button { padding: 12px 18px; background: #c2703d; color: white; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+  button:disabled { background: #9ca3af; cursor: not-allowed; }
+  .status { color: #666; margin-bottom: 12px; font-size: 14px; }
+  .error { color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; padding: 12px; border-radius: 8px; max-width: 480px; width: 100%; font-size: 14px; }
+  .card { background: white; border-radius: 12px; overflow: hidden; max-width: 480px; width: 100%; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .card-image { width: 100%; height: 220px; object-fit: cover; background: #eee; display: block; }
+  .card-body { padding: 20px; line-height: 1.6; white-space: pre-wrap; font-size: 15px; color: #333; }
+  .card h2 { font-size: 18px; margin-bottom: 10px; color: #7c4a2d; }
+  .photo-credit { font-size: 11px; color: #aaa; padding: 4px 20px 0; }
+  .notice { font-size: 13px; color: #888; margin-top: 14px; border-top: 1px solid #eee; padding-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>🏠 건축 자재 검색 도우미</h1>
+
+<div class="search-box">
+  <input type="text" id="materialInput" placeholder="예: 강마루, 합지벽지, 실크벽지">
+  <button id="searchBtn" onclick="searchMaterial()">검색</button>
+</div>
+
+<div id="statusMsg" class="status"></div>
+<div id="result"></div>
+
+<script>
+  async function searchMaterial() {
+    const query = document.getElementById("materialInput").value.trim();
+    const resultDiv = document.getElementById("result");
+    const statusDiv = document.getElementById("statusMsg");
+    const btn = document.getElementById("searchBtn");
+
+    resultDiv.innerHTML = "";
+    statusDiv.textContent = "";
+
+    if (!query) {
+      statusDiv.innerHTML = '<div class="error">자재 이름을 입력해주세요.</div>';
+      return;
+    }
+
+    btn.disabled = true;
+    statusDiv.textContent = "🔍 검색 중...";
+
+    try {
+      const [textRes, imageRes] = await Promise.all([
+        fetch("/.netlify/functions/search-material?query=" + encodeURIComponent(query)),
+        fetch("/.netlify/functions/search-image?query=" + encodeURIComponent(query))
+      ]);
+
+      const textData = await textRes.json();
+      const imageData = await imageRes.json();
+
+      if (!textData.text) throw new Error("결과를 받아오지 못했어요. 다시 시도해주세요.");
+
+      statusDiv.textContent = "";
+
+      const imageHtml = imageData?.url
+        ? '<img class="card-image" src="' + imageData.url + '" alt="' + escapeHtml(query) + '">' +
+          '<div class="photo-credit">Photo by ' + escapeHtml(imageData.photographer || "") + ' on Pexels</div>'
+        : "";
+
+      resultDiv.innerHTML =
+        '<div class="card">' +
+          imageHtml +
+          '<div class="card-body">' +
+            '<h2>' + escapeHtml(query) + '</h2>' +
+            escapeHtml(textData.text) +
+            '<div class="notice">⚠️ 가격 정보는 참고용이며, 이미지는 실제 시공 사진이 아닌 참고용 스톡 이미지입니다.</div>' +
+          '</div>' +
+        '</div>';
+    } catch (err) {
+      statusDiv.innerHTML = "";
+      resultDiv.innerHTML = '<div class="error">❌ ' + escapeHtml(err.message || "오류가 발생했어요.") + '</div>';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  document.getElementById("materialInput").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") searchMaterial();
+  });
+</script>
+
+</body>
+</html>
